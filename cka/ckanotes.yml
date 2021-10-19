@@ -1,0 +1,41 @@
+CKA exam distribution
+
+Cluster Architecture, Installation & Configuration	25%
+Workloads & Scheduling	15%
+Services & Networking	20%
+Storage	10%
+Troubleshooting	30%
+
+
+Nodes
+  Control plain / Master Node
+  Worker Nodes
+
+  Control plain / Master Nodes components
+    etcd - cluster info datastore
+    scheduler - logic for which node a pod is created
+    control manager - (node controller, Replication controller) make sure that desired state is achieved
+    api server - rest api server for all components - orchestrating all components
+
+  Worker Nodes
+    kubelet - recieves the command from scheduler to perform the action (create node, destroy, status, etc)
+    kubeproxy - worker nodes networking
+
+etcd
+  a key value store
+  etcdctl cli
+  default port 2379
+  installed manually  
+    will install as a service (etcd.service) on the node - /usr/local/bin/etcd
+    multiple master node will have multiple etcd
+      make sure etcd is aware of each other on the etcd.service
+      --initial-cluster controller-0=https://${CONTROLLER0_IP}:2380,controller-1=https://${CONTROLLER1_IP}:2380 //
+  installed via kubeadm
+    creates a pod for etcd
+    on kube-system namespace
+    run etcdctl on the pod
+      kubectl exec <podname> -n <namespace> -- sh -c "ETCDCTL_API=3 etcdctl get / --prefix --keys-only --limit=10 --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt  --key /etc/kubernetes/pki/etcd/server.key" 
+
+API-Server
+  Authenticate user > Validate request > retrieve data
+
