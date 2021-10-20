@@ -1,0 +1,15 @@
+CKA exam distribution
+
+Cluster Architecture, Installation & Configuration	25%
+Workloads & Scheduling	15%
+Services & Networking	20%
+Storage	10%
+Troubleshooting	30%
+
+
+Nodes
+    Control plain / Master Node
+    Worker Nodes
+
+    Control plain / Master Nodes components
+        etcd - 

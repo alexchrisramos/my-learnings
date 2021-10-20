@@ -37,5 +37,72 @@ etcd
       kubectl exec <podname> -n <namespace> -- sh -c "ETCDCTL_API=3 etcdctl get / --prefix --keys-only --limit=10 --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt  --key /etc/kubernetes/pki/etcd/server.key" 
 
 API-Server
-  Authenticate user > Validate request > retrieve data
+  Authenticate user > Validate request > retrieve data from etcd > Update ETCD > Scheduler > kubelet
+  API server processes request from kubectl or RestAPI calls
+  Authorizations are via certificates
+
+  Where is the API server? Where to see the API server options?
+    if installed via Kubeadm
+      creates a pod on kube-system namespace on the master node
+      file definition is at etc/kubernetes/manifests/kube-apiserver.yaml
+    if installed manually
+      on the master node
+      service definition is at etc/systemd/system/kube-apiserver.service
+      also see running process - ps -aux | grep kube-apiserver
+
+Kube-controller manager
+  Manages various controllers
+  Controller is a process - continiously watches the status and remediate issues
+    Node Controller
+      checks Nodes status every 5 seconds with 40 seconds grace period before it marks as unreachable
+      once marked as unreachable, the node is given 5 minutes to come back up (POD eviction timeout), else it removes the pods
+    Replication-Controller
+      takes care of the replicaset
+
+  Where is the controller?
+    All controllers are packaged in Kube-Controller-Manager
+      Kubeadm installation
+        Creates a POD kube-controller-manager in the kube-system namespace on the master node
+        definition is on /etc/kubernetes/manifests/kube-controller-manager.yaml
+      Manual installation
+        /etc/systemd/system/kube-controller-manager.service
+        ps -aux | grep kube-controller-manager
+
+Kube-scheduler
+    Decides which pod goes to which node
+  
+kubelet
+  installed on the worker nodes
+  Registers a node, Create PODS, Monitor node and Pods
+
+  How it is installed
+    Using Kubeadm
+      kubelet is not automatically installed
+      must be manually installed
+      ps -aux | grep kubelet  on the worker node
+    Manual installation
+      same as above
+
+kube-proxy
+  a process that runs on each nodes
+  looks for new kube services, then creates appropriate rules on each node to route traffic
+  creates an IP tables rule
+
+  How it is installed
+    Kubeadm
+      creates a pod on kube-system
+      it is deployed as a daemonset
+
+PODS
+
+
+
+
+YAML configuration file
+  Required fields in the structure
+    apiVersion
+    kind
+    metadata   (in the form of dictionary)
+    spec
+        
 
