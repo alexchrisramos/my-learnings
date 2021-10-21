@@ -104,5 +104,83 @@ YAML configuration file
     kind
     metadata   (in the form of dictionary)
     spec
-        
 
+    apiVersion: (root)
+    kind:       (root)
+    metadata:   (root) (dictionary)
+      name:     (children/siblings)
+      labels:   (children/siblings) - labels can have any key-value pair as you wish
+        app: value
+        type: value
+    spec:       (root) (dictionary)
+      containers: (list/array)
+        - name: nginx-container ( - indicates the 1st in the list/array)
+          image: nginx
+        
+  you can create a yaml from kubectl run by
+    kubectl run nginx --image=nginx --dry-run=client -o yaml > pod.yaml
+  edit dynamically a pod configuration
+    kubectl edit pod <podname>
+
+
+Controllers
+Replication controller VS ReplicaSet
+  Replica of pods - for issues and load balancing
+  Replication Controller is different from ReplicaSet
+  ReplicationController is the older and ReplicaSet is the newer
+
+Example of replicationcontroller
+
+kind: apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp
+spec:
+  replicas: <Replicas>
+  selector:
+    app: myapp
+  template:
+    metadata:
+      name: myapp
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: <Image>
+          ports:
+            - containerPort: <Port>
+replicas: 3
+
+  kubectl create -f <replicationcontrollerfile>
+  kubectl get repicationcontroller
+
+Example for ReplicaSet
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  labels: 
+    app: myapp
+    type: frontend
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels: 
+        app: myapp
+        type: frontend
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+replicas: 3
+selector:       (this would allow the ReplicaSet to control the other pods that are existing already)
+  matchLabels:
+    type: front-end
+
+  kubectl create -f replicaset-definition.yaml
+  kubectl get replicaset
+  
+  Labels and selectors allows the replicaset to identify which pods to monitor
