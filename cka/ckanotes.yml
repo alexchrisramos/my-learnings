@@ -163,14 +163,14 @@ metadata:
   name: myapp-replicaset
   labels: 
     app: myapp
-    type: frontend
+    tier: frontend   (this should match the selector metadata labels tier)
 spec:
   template:
     metadata:
       name: myapp-pod
       labels: 
         app: myapp
-        type: frontend
+        tier: frontend    (this should match the metadata labels tier)
     spec:
       containers:
       - name: nginx-container
@@ -183,4 +183,181 @@ selector:       (this would allow the ReplicaSet to control the other pods that 
   kubectl create -f replicaset-definition.yaml
   kubectl get replicaset
   
-  Labels and selectors allows the replicaset to identify which pods to monitor
+  Labels and selectors allows the replicaset to identify which existing pods to monitor and control
+
+scaling replicaset
+  1. change the number of replicas in the definition then run the replace command
+    kubectl replace -f <name of updated replicaset yaml file>
+  2. run the command
+    kubectl scale --replicas=<value> -f <name of yaml definition>  (this does not update the value in the file)
+    kubectl scale --replicas=<value> replicaset <name of replicaset>    
+
+  kubectl delete replicaset <replicateset name> (this deletes the pods as well)
+  kubectl get all (gets all the resources)
+
+Deployments
+  Deployments > Replicaset > Pods
+  Deployments automatically creates ReplicaSet which then creates the pods
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+c:
+  selector:
+    matchLabels:
+      app: myapp
+  e:
+    metadata:
+      labels:
+         myapp
+    spec:
+      containers:
+      - name: myapp
+        image: <Image>
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: <Port>
+
+namespace
+  logical separation 
+  
+  DNS resolution Example
+  mysql.connect("db-service")  - same namespace
+  mysql.connect("db-service.dev.svc.cluster.local")   - different namespace, cluster.local is the domain of the cluster, svc is the subdomain for the service, dev is the namespace
+  
+  namespace created at setup
+  default, kube-system, public
+
+to createa  namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+or
+kubectl create namespace dev
+
+to use namespace
+  kubectl create -f pod-definition.yaml --namespace=dev
+  or
+  add in metadata
+  namespace: dev
+  after the name
+
+  kubectl get pods --namespace=dev
+
+  to change namespace context
+  kubectl config set-context $(kubectl config current-context) --namespace=dev
+
+  kubectl get pods --all-namespace
+  
+
+Resource Quota
+  To limit the resource of a namespace
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: dev
+
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "4"
+    requests.memroy: 5Gi
+    limits.cpu: "10"
+    limits.memory: 10Gi
+
+
+Services
+  Types: NodePort, ClusterIP, LoadBalancer
+  Service identifies pods using the pods labels (Service > Selector is the same as Pods > Labels)
+  Node port range is between 30000 - 32767
+
+  Algorithm: random
+  SessionAfinity: Yes
+
+  NodePort Service - creates a Service that spans accross all nodes. This will make the port for any node targeted to the pod
+  So, if the pod exists on any Node, you can still reach the pod NodeID:port
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  type: NodePort
+  ports:
+  - port: 80    (port of the service object)
+    targetPort: 80   (port of the target pod)
+    nodePort: 30008   (port of the node)
+  selector:
+    app: myapp
+    type: front-end
+
+curl http://nodeip:nodeport
+
+  ClusterIP Service - provides correct way of connecting cluster of pods (group of Frontend pods - group of Backend pods -
+  group of  DB pods)
+
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: backend
+  spec:
+    type: ClusterIP
+    selector:
+      app: myapp
+      type: back-end
+    ports:
+    - port: 80
+      targetPort: 80
+  
+  LoadBalancer Service - creates a single point of access to the pods/service. Single URL will distribute the requests
+  to the different service. Only works on supported Cloud platforms, else it will just work like a regular nodeport service.
+
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: myapp
+  spec:
+    type: LoadBalancer
+    selector:
+      app: myapp
+    ports:
+    - port: <Port>
+      targetPort: <Target Port>
+      nodePort: 30008
+  
+
+
+Imperative vs Declarative
+  infra as a code approaches
+  imperative = what to do, how to do, step by step
+  declative = just declare the final state, the system will figure out how
+
+imperative commands
+  create objects
+    kubectl create
+    kubectl run
+    kubectl expose
+  update objects
+    kubectl edit
+    kubectl scale
+    kubectl set
+declarative - yaml files
+    kubectl apply -f definition file
+
+
+quick imperative commands, helpful in exam
+create pod and service to expose the pod
+k run httpd --image=httpd:alpine --port 80 --expose
+create deployment with number of replicas
+k create deployment redis-deploy -n dev-ns --image=redis --replicas=2
+create pod then expose the pod port
+k run redis --image=redis:alpine --labels=tier=db
+k expose pod redis --name redis-service --port 6379 --target-port 6379
+
