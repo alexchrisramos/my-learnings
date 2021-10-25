@@ -1,0 +1,28 @@
+Scheduling
+    Scheduling pods
+
+    in the pod definition there is a hidden element under spec
+    scheduler identifies which node the pod will be created and sets the binding
+    if there is no node binded to the pod, the pod stays on pending status
+
+Manual Scheduling
+    manually specify the nodename in the pod definition - only at creation time
+    cannot be altered anymore
+    specifying the node manually to existing pod is to
+    create a binding object (yaml file) and send a POST request to the pods binding API (URL)
+    data must be in json format
+
+
+Labels and Selectors
+    properties attach to an object
+    grouping things together (ex. animals - color, class, type, etc)
+    kubernetes uses labels and selectors internally 
+    it is used by service to identify the pods
+    it is used by replicaset to identify the pods in the matchLabels
+
+    add as many labels as you like
+    to get objects using selector as filter
+    kubectl get pods --selector app=App1
+
+    annotations is same level as labels but this is for just information purpose, like contact info, build version
+    
