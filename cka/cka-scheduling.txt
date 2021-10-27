@@ -26,3 +26,37 @@ Labels and Selectors
 
     annotations is same level as labels but this is for just information purpose, like contact info, build version
     
+    kubectl get pods -l env=dev,bu=finance | wc -l
+    kubectl get all -l env=prod --no-headers
+
+
+Taints and Tolerations
+    Node are people with bug repellant lotion and pods are bugs
+    Taints on node and toleration on pods
+    Taints and Tolerations are meant to be used for allowing pods on nodes that pass a certain toleratons
+
+    TAINTING
+    kubectl taint nodes <nodename> key=value:taint-effect
+    kubectl taint nodes Node01 color=blue:NoSchedule/PreferNoSchedule/NoExecute   (this is the effect on pods that does not tolerate)
+
+    NoSchedule - PODS will not be scheduled
+    PreferNoSchedule - scheduler tries not to schedule a pod but not guaranteed
+    NoExecute - new pods will not be scheduled on the node, and existing pods will be removed if they do not tolerate
+
+    Tolerations
+    spec:
+      containers:
+      - name: 
+        image: 
+      tolerations:
+      - key: "color"
+        operator: "Equal"
+        value: "blue"
+        effect: "NoSchedule"
+
+    kubectl describe node kubemaster | grep Taint
+
+
+Node se
+
+
