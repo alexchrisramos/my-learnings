@@ -207,3 +207,64 @@ kubectl -n kube-system describe ds weave-net | grep -i image
 
 
 
+Static Pods
+  a single node, single kubelet instance, no api-server, no scheduler, no other nodes
+  with no api server, kubelet can get definition of pods from
+  /etc/kubernetes/manifests
+  kubelet also recreates the pods if it crashes
+  kubelet also recreates the pods if changes were made from definition files in the directory above
+  kubelet also deletes the pods if the file is deleted from the directory above
+  kubelet starts pods from 2 locations = api-server and manifests directory
+  any static pods started from manifests directory, the api-server is still aware and lists
+  why api-server aware of the static pods? because it creates a readonly mirror of the static pods
+  api-server cannot edit and delete
+
+  the directory above can be changed/configured to any directory
+  the directory is only passed to kubelet as an option as the service runs
+  the option configured in:
+  kubelet.service
+    --pod-manifest-path=/etc/Kubernetes/manifests \\
+  or by providing a config file that kubelet.service will use
+    --config=kubeconfig.yaml \\
+        where kubeconfig.yaml has
+        staticPodPath: /etc/kubernetes/manifests
+        (kubeadm uses this approach)
+  
+  once static pods are created, you can view them using docker ps command since there is no api-server for the kubectl
+  use case: On all master node, make etcd, apiserver, controller as static pods
+
+  list process details of linux server/node
+    ps -ef | grep kubelet | grep "\--config"
+  search items inside files
+    grep -i static /var/lib/kubelet/config.yaml
+    grep -i image kube-apiserver.yaml
+  create static pod in lab
+    kubectl run static-busybox --image=busybox --command sleep 1000 --restart=Never --dry-run -o yaml > static-busybox.yaml
+  delete file of static pod
+    rm -rf <filename>
+
+
+Multiple schedulers
+  cluster can have multiple scheduler at the same time
+  you can deploy the default scheduler and create your own scheduler
+  then have pods specifically use the custom scheduler when being deployed
+
+  to create own scheduler, download scheduler binary, wget <schedulerURL>
+  and deploy with different options (name, )
+
+  on custom scheduler definition file specify the scheduler name under command
+  - --scheduler-name=my-scheduler
+  on pods, specify which scheduler to use under specs
+    schedulerName: my-scheduler
+
+Scheduler related events
+  kubectl get events  (in the current namespace)
+  to see which scheduler was used for the pod
+
+
+
+
+
+
+
+

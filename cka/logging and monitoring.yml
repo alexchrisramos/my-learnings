@@ -1,0 +1,24 @@
+Logging and monitoring
+  Monitoring solution
+  Metric server, Prometheus, Elastic stack, Datadog, dynatrace
+    Metric server
+    1 metric server per cluster
+    in-memory (no historical)
+
+cAdvisor (container advisor) feeds data to kubelet on each node
+  minikube addons enable metric-server
+  git clone https://github.com/kubernetes-incubator/metrics-server.git
+    kubectl create -f <all of the definitions>
+  to view
+    kubectl top node
+    kubectl top pod
+
+
+Application logs
+  docker:
+  docker logs -f ecf
+
+  kubernetes:
+  kubectl logs -f <podname>
+  if multiple container inside a pod, need to specify the container name as well
+  kubectl logs -f <podname> <containername>
