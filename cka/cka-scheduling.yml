@@ -1,0 +1,209 @@
+Scheduling
+    Scheduling pods
+
+    in the pod definition there is a hidden element under spec
+    scheduler identifies which node the pod will be created and sets the binding
+    if there is no node binded to the pod, the pod stays on pending status
+
+Manual Scheduling
+    manually specify the nodename in the pod definition - only at creation time
+    cannot be altered anymore
+    specifying the node manually to existing pod is to
+    create a binding object (yaml file) and send a POST request to the pods binding API (URL)
+    data must be in json format
+
+
+Labels and Selectors
+    properties attach to an object
+    grouping things together (ex. animals - color, class, type, etc)
+    kubernetes uses labels and selectors internally 
+    it is used by service to identify the pods
+    it is used by replicaset to identify the pods in the matchLabels
+
+    add as many labels as you like
+    to get objects using selector as filter
+    kubectl get pods --selector app=App1
+
+    annotations is same level as labels but this is for just information purpose, like contact info, build version
+    
+    kubectl get pods -l env=dev,bu=finance | wc -l
+    kubectl get all -l env=prod --no-headers
+
+
+Taints and Tolerations
+    Node are people with bug repellant lotion and pods are bugs
+    Taints on node and toleration on pods
+    Taints and Tolerations are meant to be used for allowing pods on nodes that pass a certain toleratons
+
+    TAINTING
+    kubectl taint nodes <nodename> key=value:taint-effect
+    kubectl taint nodes Node01 color=blue:NoSchedule/PreferNoSchedule/NoExecute   (this is the effect on pods that does not tolerate)
+
+    NoSchedule - PODS will not be scheduled
+    PreferNoSchedule - scheduler tries not to schedule a pod but not guaranteed
+    NoExecute - new pods will not be scheduled on the node, and existing pods will be removed if they do not tolerate
+
+    Tolerations
+    spec:
+      containers:
+      - name: 
+        image: 
+      tolerations:
+      - key: "color"
+        operator: "Equal"
+        value: "blue"
+        effect: "NoSchedule"
+
+    kubectl describe node kubemaster | grep Taint
+
+
+Node selector
+    specifying which node to use
+    use case: dedicate higher workload to bigger nodes
+
+kind: apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: myapp
+    image: <Image>
+  nodeSelector:
+    size: Large   <key value pair assigned to nodes>
+
+kubectl label nodes <node-name> <label-key>=<label-value>
+kubectl label nodes node01 size=Large
+
+
+Node affinity and Anti-affinity
+  advanced node selector
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: myapp
+    image: <Image>
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchEpressions:
+          - key: size
+            operator: In
+            values:
+            - Large
+
+  Node affinity types available
+    - requiredDuringSchedulingIgnoredDuringExecution
+    - preferredDuringSchedulingIgnoredDuringExecution
+    - requiredDuringSchedulingRequiredDuringExecution
+
+
+DuringScheduling - state where does not exist and created for first time
+  -required - mandate it match, if no match, not scheduled
+  -preferred - if no match, ignore affinity rules
+DuringExecution - pod has been running and a change happened that affects the affinity
+  -ignored - pods will continue to run, not affected by changes in node affinity
+  -required - will evict pods running on nodes that violates affinity rules
+
+
+Taints and Tolerations VS Node Affinity and Anti-affinity
+
+Taints and Tolerations only prevents pods from being scheduled on nodes, but pods might get scheduled on nodes that has blank taints
+  pods with tolerations can still be scheduled on nodes with blank taints
+Node affinity, labels pods and nodes so that they can match for scheduling, but it doesn't prevent un-labeled pods from being scheduled on a labeled node
+  pods with no labels can still be scheduled on nodes with labels
+
+
+
+Resource requirements and limits
+  Scheduler looks for nodes that will meet pods resource requirements 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: myapp
+    image: <Image>
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "2Gi"
+        cpu: "500m"  (0.5)
+
+1 CPU = 1 AWS vCPU, 1 GCP Core, 1 Azure Core, 1 Hyperthread
+
+1 G (Gigabyte) = 1,000,000,000 bytes
+1 M (Megabyte) = 1,000,000 bytes
+1 K (Kilobyte) = 1,000 bytes
+
+1 Gi (Gibibyte) = 1,073,741,824 bytes
+1 Mi (Mebibyte) = 1,048,576 bytes
+1 Ki (kibibyte) = 1,024 bytes
+
+
+Resource limts
+  Requests are separate from limits in the definition
+
+  if pods tries to consume more CPU than limit - it THROTTLES
+  if pods tries to consume more MEMORY than limit - the pod gets TERMINATED
+
+  Default limits can be defined for the namespace in the LimitRange kind below
+
+  apiVersion: v1
+  kind: LimitRange
+  metadata:
+    name: mem-limit-range
+  spec:
+    limits:
+    - default:
+        memory: 512Mi
+      defaultRequest:
+        memory: 256Mi
+      type: container
+
+
+Daemon set
+  like replicasets but runs 1 copy of the pod on each cluster
+  if a node gets removed, a daemon set copy is also removed
+  use case: kube-proxy, weave-net, monitoring agent, logs viewer agent
+  
+
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitoring-daemon
+spec:
+  selector:
+    matchLabels:  
+      app: monitoring-agent
+  template:
+    metadata:
+      labels:
+        app: monitoring-agent
+    spec:
+      containers:
+      - name: monitoring-agent-name
+        image: monitoring-agent-image
+
+kubectl get daemonsets
+kubectl describe daemonsets <name>
+kubectl -n kube-system describe ds weave-net | grep -i image
+
+
+

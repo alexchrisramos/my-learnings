@@ -121,6 +121,12 @@ YAML configuration file
     kubectl run nginx --image=nginx --dry-run=client -o yaml > pod.yaml
   edit dynamically a pod configuration
     kubectl edit pod <podname>
+    editing an existing pod is only possible for image, activeDeadlineSeconds and tolerations
+    if required, you can still do edit but, it will be forbidden and a temp yaml will be provided, just delete old pod and use new yaml
+    kubectl create -f /tmp/kubectl-edit-ccvrq.yaml
+
+  get pod definition
+    kubectl get pod webapp -o yaml > my-new-pod.yaml
 
 
 Controllers
