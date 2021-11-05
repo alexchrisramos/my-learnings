@@ -1,0 +1,71 @@
+ConfigMaps and Secrets
+
+
+
+ConfigMaps
+
+
+
+Secrets
+    to store sensitive information
+    hashed format
+
+    kubectl get secret
+    kubectl get secret <secret-name> -o yaml
+    kubectl describe secret
+    
+    ways to create secret:
+    1. create Secrets
+
+    imperative
+        kubectl create secret generic
+            <secret-name> --from-literal=<key>=<value>
+
+        kubectl create secret generic \
+            app-secret --from-literal=DB_Host=mysql \
+                       --from-literal=DB_User=root
+                       --from-literal=DB_Password=password
+        
+        kubectl create secret generic \
+            <secret-name> --from-file=<path-to-file>
+
+        kubectl create secret generic \
+            app-secret --from-file=app_secret.properties
+
+    declarative
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: app-secret
+        data:
+            DB_Host: mysql
+            DB_User: root
+            DB_password: password
+
+    data needs to be hashed/encoded
+    encode:
+    echo -n 'root' | base64
+    echo -n 'password' | base64
+
+    decode:
+    echo -n 'ase+-+=312' | base64 --decode
+
+    2. inject to pod
+        apiVersion: v1
+        kind: Pod
+        metadata:
+            name: my-app
+            labels:
+                name: my-app
+        spec:
+            containers: 
+            - name: my-web-app
+              image: nginx
+              ports:
+                - containerPort: 8080
+              envFrom:
+                - secretRef:
+                  name: app-secret  (the metadata name of secret)
+                  
+
+    
