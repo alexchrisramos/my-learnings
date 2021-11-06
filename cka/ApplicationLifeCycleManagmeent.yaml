@@ -198,6 +198,58 @@ Secrets
               envFrom:
                 - secretRef:
                   name: app-secret  (the metadata name of secret)
+
+              or
+              envFrom:
+                - secretKeyRef:
+                    name: app-secret
+                    key: DB_password
+
+              or
+              volumes:
+              - name: app-secret-volume
+                secret: 
+                  secretName: app-secret
+              (if mounted as volume, each key is equal to a file and value is inside)
+
+
+Multi-container PODS
+  Ex. WEB server and Log agent
+
+        apiVersion: v1
+        kind: Pod
+        metadata:
+            name: my-app
+            labels:
+                name: my-app
+        spec:
+            containers: 
+            - name: my-web-app
+              image: nginx
+            - name: logging-agent
+              image: logging-server
+
+
+Multi-Container PODS Design
+  Sidecar pattern
+  Adapter pattern
+  Ambassador pattern
+  
+  Details of design patterns are for CKAD
+
+
+InitContainers
+  a container that only run once, to initialize a another container or if a db goes up the initcontainer will go up
+  the task/process on an initContainer needs to complete first before the main container is started
+  multi-initContainer is possible, and it is executed 1 at a time in sequence
+  in Pod spec, under spec, instead of containers, it should be initContainers
+
+
+
+Self healing applications
+  Liveness and Readiness probes are part of CKAD
+  
+
                   
 
 

@@ -1,0 +1,70 @@
+Cluster Maintenace
+
+OS Upgrade
+  Ex. Path/Upgrade of Nodes
+  Nodes down = Pods down
+  If node is not available for 5minutes, the pods on the Nodes are evicted and created on another node (if replcaset)
+  thats Pod eviction timeout
+    kube-controller-manager --pod-eviction-timeout=5m0s
+
+  If you want to safely remove/move the Pods out of the Node, and set the Node unschedulable
+    kubectl drain node-1  (gracefully remove and move pods to other nodes)
+    kubectl cordon node-2  (set node as unschedulable)
+    kubectl uncordon node-1  (set node as scheduleable)  
+
+
+Kubernetes verions
+  v1.11.3  (major, minor, path)
+  etcd and coreDNS has their own versions because they are separate projects
+
+
+ Cluster Upgrade Process
+  The components can have different versions
+  kube-apiserver should be the highest version (if they will be different), no other component can be higher
+  Example:
+    if kube-apiserver is at version X
+    controller-manager and kube-scheduler can be X-1
+    kubelet and kube-proxy can be X-2
+
+    kubectl can be +-1X of kube-apiserver version
+
+
+    kuberbetes support 3 minor versions
+    ex. if latest GA is 1.12  - kubernetes supports: 1.12, 1.11 and 1.10
+
+    Upgrade should be 1 minor version at a time
+
+  How to upgrade?
+    if using AKS,EKS or GCP managed kuberbetes, they have their button to upgrade
+    if using hardway - you have to upgrade yourself
+    if kubeadm
+
+    1. Upgrade Master nodes first - kubernetes admins/management are unavailable but atleast applications are not
+    2. Upgrade worker nodes next (with master node 1 higher version is supported)
+        - upgrade all worker nodes at once - but this means applications will not be available
+        - upgrade worker nodes at a time
+        - add new nodes to cluster with new version
+      kubeadm upgrade plan
+      Note: kubeadm does not upgrade the kubelet's
+      Note: you have to upgrade kubeadm first before upgrading the cluster
+
+      steps: example current version 1.11
+      1. upgrade kubeadm to 1.12
+          apt-get upgrade -y kubeadm=1.12.0-00
+      2. proceed with cluster upgrade
+          kubeadm upgrade apply v1.12.0
+          Note: kubelet on master is not upgraded
+      3. upgrade kubelet on master if it has kubelet
+          apt-get upgrade -y kubelet=1.12.0-00
+          systemctl restart kubelet
+      4. upgrade the kubetlet on worker nodes
+          upgrade 1 at a time
+          kubectl drain node01
+          apt-get upgrade -y kubeadm=1.12.0-00
+          apt-get upgrade -y kubelet=1.12.0-00
+          kubeadm upgrade node config --kubelet-version v1.12.0
+          systemctl restart kubelet
+          kubectl uncordon node01
+      5. upgrade the remaining the other nodes with same steps
+         
+
