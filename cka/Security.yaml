@@ -427,10 +427,94 @@ API groups
 
   /apis/certificates.k8s.io/v1 - /certificateSigningRequest
 
-  each resources has actions related:
+  each resources has actions related (VERBS):
   list, get, create, delete, update, watch
 
+
+  curl http://localhost:6443 -k
+  Note: you will be forbidden to access since you did not provide the cert and key
+
+  another way is to
+  kubectl proxy (launches a proxy on port 8001 and uses the cert from your config file)
+  curl http://localhost:8001 -k
+
+
+Authorization
+  once the user/service gets access (authentication) what can they do? - this is authorization
+  authorization mechanisms:
+  Node
+  ABAC
+  RBAC
+  Webhook
+
+  Node Authorizer
+    kubelet is part of the system:node:nodexx
   
+  ABAC - Attribute Based Authorization Control
+    config file, but every add/change needs to edit the config file
+  
+  RBAC - Role Based Access Control
+    create a role and associate users to that role
+  
+  Webhook - 3rd party
+    Example. Open Policy Agent 
+  
+  Authorization mode, additional to Node, ABAC, RBAC, Webhook:
+  AlwaysAllow
+  AlwaysDeny
+
+  This is set in the kube-apiserver service config
+  --authorization-mode=Node, RBAC, Webhook
+  request is authorized in order specified
+
+RBAC further explained
+
+  developer-role.yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata: 
+    name: developer
+  rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "get", "create", "delete", "update"]
+  - apiGroups: [""]
+    resources: ["configMaps"]
+    verbs: ["create"]
+
+kubectl create -f developer-role.yaml 
+
+  devuser-developer-binding.yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata: 
+    name: devuser-developer-binding
+  subjects:
+  - kind: User
+    name: dev-user
+    apiGroups: rbac.authorization.k8s.io
+  roleRef:
+    kind: Role
+    name: developer
+    apiGroup: rbac.authorization.k8s.io
+
+kubectl create -f devuser-developer-binding.yaml
+
+  view RBAC
+    kubectl get roles
+    kubectl get rolebindings
+    kubectl describe role developer
+    kubectl describe rolebinding devuser-developer-binding
+
+Check your access
+    kubectl auth can-i create deployments
+    kubectl auth can-i delete nodes
+    kubectl auth can-i create deployments --as dev-user --namespace test
+    kubectl auth can-i delete pods --as dev-user
+
+
+
+
 
 
 
