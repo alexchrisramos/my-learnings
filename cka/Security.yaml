@@ -1,0 +1,441 @@
+Certificates
+  Security Premitives
+
+  root access is disabled
+  Clusters are password based authentication disabled
+  only SSH key based authentication is available
+
+  Authentication is managed by the kube-apiserver
+  Users:
+  admin, dev, and service accounts
+  application users are managed by the application authentication so not need to discuss
+
+  auth mechanisms:
+  -static password file
+    user-details.csv
+        password,username,userid,group(option)
+    the csv file is then added to the command of kube-apiserver.service
+        --basic-auth-file=user-details.csv
+    to authenticate:
+    curl -v -k https://master-node-ip:6443/api/v1/pods -u "user1:password123"
+
+  -static token file
+    user-token-details.csv
+        token,username,userid,group(option)
+    the csv file is then added to the command of kube-apiserver.service
+        --token-auth-file=user-token-details.csv
+    to authenticate:
+    curl -v -k https://master-node-ip:6443/api/v1/pods -header "Authorization: Bearer dq83eq9bhadajdawjdawd"
+
+    TLS Authentication
+      SSL TLS Certificates
+      
+      SYMMETRIC Encryption
+        Encrypted data using a key
+        but the receiving server also needs the key to decrypt, so the key is also sent together
+        uses a single key to encrypt and decrypt
+      ASSYMETRIC Encryption
+        consist of
+          Private Key - only yours
+          Public Key (lock) - anyone can have
+
+          to generate:
+          ssh-keygen
+          openssl
+
+          the server generates a public and private key
+          the public key is sent to the user
+          the symetric key is then encrypted using the public key and sent to server
+          the server is the only one who has the private key to decrypt the encrypted symetric key
+          once the server has the symetric key, the server can then encrypt the data using the symetric key
+          of the user without the need to send the symetric key with it
+          the communication of the user and the server can now continue communicating
+          using the encrypted key that they both have
+
+        public key's are usually named
+        *.pem (server.pem, client.pem)
+        *.crt (server.crt, client.crt)
+
+        private key's are usually named
+        *.key (server.key, client.key)
+        *-key.pem (server-key.pem, client-key.pem)
+
+
+      Certificates
+          validates the identity of the server
+          when the server sends the public key to initiate the assymetric process
+          the public key is sent together with the Certificate
+
+          since anyone can create a certificate (self signed)
+          then the most important part of the certificate is the 
+          CA - Certificate authotirites
+
+          companies creates a Certificate signing request (CSR) and 
+          sends to a public trusted CA to be signed
+
+          corportate can implement internal private CA for internal server-client authentication
+
+TLS in kubernetes
+    CA = root Certificates
+    Server certificates = from server
+    Client certificates = client's
+
+    all interaction between the nodes must be secured
+    all communications between components (kube-apiserver > scheduler) must be encrypted
+
+
+  Certificate authority:
+    ca.crt ca.key
+
+  Servers:
+    kube-apiserver
+      apiserver.crt apiserver.key
+
+    ETCD server  
+      etcdserver.crt etcrdserver.key
+    
+    kubelet server
+      kubelet.crt kubelet.key
+    
+  Clients:
+    Admins via kubectl
+      admin.crt admin.key
+
+    kube-scheduler via REST Api
+      scheduler.crt scheduler.key
+    
+    kube-controller-manager
+      controller-manager.crt controller-manager.key
+    
+    kube-proxy
+      kube-proxy.crt kube-proxy.key
+    
+    kube-apiserver (act as a client for the etcdserver)
+      use the original cert of create a new one for etcd specifically
+    
+    kube-apiserver (act as a client for the kubelet server)
+      use original or create new one
+    
+    kubelet (act as a client for the api-server)
+
+Certificate creation
+  ESYRSA, OPENSSL, CFSSL
+
+  For the CA
+    generate private key
+    openssl genrsa -out ca.key 2048
+          ca.key
+    CSR
+    openssl req -new -key ca.key -subj "/CN=KUBERNETES-CA" -out ca.csr
+          ca.csr
+
+    Sign the CSR
+    openssl x509 -req -in ca.csr -signkey ca.key -out ca.crt
+          ca.crt
+    
+
+  For the admin user
+    generate private key
+    openssl genrsa -out admin.key 2048
+          admin.key
+    
+    CSR
+    openssl req -new -key admin.key -subj "/CN=kube-admin/O=system:masters" -out admin.csr
+          admin.csr
+    (O=system:masters means adding the user to the kubernetes admin group)
+
+    Sign the CSR
+    openssl x509 -req -in admin.csr -CA ca.crt -CAKey ca.key -out admin.crt
+          admin.crt
+    
+  kube-scheduler
+    same steps but since part of the system component, prefix the name with SYSTEM
+    SYSTEM:kube-scheduler
+    CN=SYSTEM:kube-scheduler
+
+  kube-controller-manager
+    same steps but since part of the system component, prefix the name with SYSTEM
+    SYSTEM:kube-controller-manager
+  
+  kube-proxy
+    same steps
+
+
+How certificates will be used for client
+  admins
+  curl https://master-node-ip:6443/api/v1/pods --key admin.key --cert admin.crt --cacert ca.crt
+
+  kube-config.yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: ca.crt
+    server: https://kube-apiserver:6443
+  name: kubernetes
+kind: Config
+users:
+- name: kubernetes-admin
+  user: 
+    client-certificate: admin.crt
+    client-key: admin.key
+
+
+all client-servers needs a copy of the CA root certificate
+  ca.crt
+
+
+
+  Server components
+  ETCD servers
+    same steps to generate etcd certificate
+        etcdserver.crt etcdserver.key
+    additionally, since etcd servers can be configured as a multi cluster
+    need to generate a cert for the peering between etcd's
+        etcdpeer.crt etcdpeer.key
+    
+    specify all of these cert files on the etcd.yaml parameters/command
+  
+  kube-apiserver
+    since alot of components uses kube-apiserver this component has many aliases
+    kube-apiserver
+    kubernetes
+    kubernetes.default
+    kubernetes.default.svc
+    kubernetes.default.svc.cluster.local
+    IP address of the Host/pod
+
+  all of these needs to be present in the certificate
+
+    generate the key
+      openssl genrsa -out apiserver.key 2048
+          apiserver.key
+      openssl req -new -key apiserver.key -subj "/CN=kube-apiserver" -out apiserver.csr
+          apiserver.csr -config openssl.cnf
+        where the openssl.cnf is
+[req]
+req_extensions = v3_req
+[ v3 req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation,
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = kubernetes
+DNS.2 = kubernetes.default
+DNS.3 = kubernetes.default.svc
+DNS.4 = kubernetes.default.svc.cluster.local
+IP.1 = 10.96.0.1
+IP.2 = 172.17.0.87
+
+      openssl x509 -req -in apiserver.csr -CA ca.crt -CAKey ca.key -out apiserver.crt
+            apiserver.crt
+  all these certificates are passed in to the kube-apiserver executable / service configuration file
+    ExecStart=/usr/local/bin/kube-apiserver \\
+      --advertise-address=${INTERNAL_IP} \\
+      --etcd-cafile=/var/lib/kubernetes/ca.pem \\
+      --etcd-certfile=/var/lib/kubernetes/apiserver-etcd-client.crt \\
+      --
+  
+  kubelet server (rest https)
+    certificates are named by their nodename
+    node01, node02, 
+    once created use them to the kubelet-config.yaml
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+authentication:
+  x509:
+    clientCAFile: "/var/lib/kubernetes/ca.pem"
+authorization:
+  mode: Webhook
+clusterDomain: "cluster.local"
+clusterDNS:
+  - "10.32.0.10"
+podCIDR: "${POD_CIDR}"
+resolvConf: "/run/systemd/resolve/resolv.conf"
+runtimeRequestTimeout: "15m"
+tlsCertFile: "/var/lib/kubelet/kubelet-node01.crt"
+tlsPrivateKeyFile: "/var/lib/kubelet/kubelet-node01.key"
+
+  kubetlet as client
+    kubelet needs to generate cert as client for API server
+        CN name is system:node:node01, system:node:node02
+      nodes also needs to be added to group, same as the admin above
+
+
+View certificates of existing cluster
+  How the cluster was setup? kubeadm or hardway?
+      
+  The hardway generates components as services
+      cat /etc/systemd/system/kube-apiserver.service
+  kubeadm generates components as pods (static pods)
+      cat /etc/kubernetes/manifests/kube-apiserver.yaml
+
+  Generate a table for checking
+  Component       | Type              |  Certificate Path  |  CN Name  | Alt Name  | Organization  | Issuer   |  Expiration
+  kube-apiserver  | Server            |  
+  kube-apiserver  | Server            |
+  kube-apiserver  | Client (kubelet)  |
+  kube-apiserver  | Client (kubelet)  |
+  kube-apiserver  | Client (Etcd)     |
+  kube-apiserver  | Client (Etcd)     |
+
+  for kubeadm view definition at 
+      cat /etc/kubernetes/manifests/kube-apiserver.yaml
+  to view the content of each certificate
+      openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout
+    check the CN name, alternate name, expiry and issuer
+  cert requirements are listed in the kube docs
+
+  when running issue, look at logs
+    if installed the hardway, since components are running as services
+    check the system logs
+      journalctl -u etcd.service -1
+    if installed with kubeadm
+      kubectl logs etcd-master
+    
+    if core components are down - apiserver or etcdserver
+    kubectl will not work
+    need to work 1 level down using docker command line
+    list containers
+      docker ps -a
+    get logs of container
+      docker logs <containerid>
+
+  Practice
+    apiserver certificate file
+      --tls-cert-file=
+    cert file used to authenticate apiserver client to etcd server
+      --etcd-certfile=
+    key used to identify apiserver client to kubelet server
+      --kubelet-client-key=
+
+
+Certificates API
+  the CA is basically just the pair of keys generated initially, whoever has access to these files has the power
+  place the files on a server - which becomes the CA server
+  kubeadm creates the master as CA
+  to make user administration easier, there is a Certificates API
+    1. Create a CertificateSigningRequest Object
+    2. Review request
+    3. Approve request
+    4. Share certs to users
+
+  steps:
+  1. the new user will generate a key file
+      openssl genrsa -out jane.key 2048
+  2. generate a csr from key
+      openssl req -new -key jane.key -subj "/CN=jane" -out jane.csr
+  3. encrypt jane.csr 
+      cat jane.csr | base64
+  4. current admin gets the csr key and generates a signing request object
+      apiVersion: certificates.k8s.io/v1beta1
+      kind: CertificateSigningRequest
+      metadata:
+        name: jane
+      spec:
+        groups:
+        - system:authenticated
+        usages:
+        - digital signature
+        - key encipherment
+        - server auth
+      request:
+        <the encrypted jane.csr>
+
+  once object has been created, all admin can see the request
+      kubectl get csr
+  approve
+      kubectl certificate approve jane
+  view cert
+      kubectl get csr jane -o yaml
+      decode the certificate from base64
+      echo "awduawd29" | base64 --decode
+
+  note: from the controlplane, the controller-manager is the actual component that controls all the certificate related
+        CSR-APPROVING, CSR-SIGNING
+        this means that the controller-manager configuration needs to have the CA root cert and CA root key
+        --cluster-signing-cert-file=
+        --cluster-signing-key-file=
+
+
+
+KubeConfig
+  instead of providing the cert, key for every kubectl, these can be configured on the kubeconfig file
+  kubectl get pods --kubeconfig config
+  by default kubectl look for config file under $HOME/.kube/config
+  if the config file is created on above, no need to mention where is file during kubectl
+
+  kubeconfig file has a format
+  sections:
+    Clusters - Dev, Production
+    Contexts - Admin@production, DevUser@Dev  (marry the users to clusters)
+    Users    - Admin, DevUser
+
+  apiVersion: v1
+  kind: Config
+  current-context: my-kube-admin@my-kube-playground (sets the default)
+  clusters:
+  - name: my-kube-playground
+    cluster:
+      certificate-authority: ca.crt
+      server: https://my-kube-playground:6443
+  contexts:
+  - name: my-kube-admin@my-kube-playground 
+    context: 
+      cluster: my-kube-playground
+      user: my-kube-admin
+      namespace: default  (to specify a context of the namespace)
+
+  users:
+  - name: my-kube-admin
+    user: 
+      client-certificate: admin.crt
+      client-key: admin.key
+
+show the config file of kubectl
+  kubectl config view
+change the default context  
+  kubectl config use-context prod-user@production  
+  kubectl config view --kubeconfig=<configfile>
+
+
+
+API groups
+  examples:
+  curl https://kube-master:6443/VERSION  - version api to get the version
+  curl https://kube-master:6443/API/v1/pods - api api to get the resources
+
+  kubernetes api's
+  /metrics
+  /healthz
+  /version
+  /api
+  /apis
+  /logs
+
+  api responsible for cluster functionality
+  core group:
+  /api/v1 - /namespaces, /pods, /rc, /events, /nodes, /endpoints, /secrets, /services ....etc
+
+  named group (API groups):
+  /apis  - /apps, /extensions, /networking.k8s.io, /storage.k8s.io, /authentication.k8s.io, /certificates.k8s.io
+
+
+  resources:
+  /apis/apps/v1 - /deployments, /replicaset, /statefulset
+
+  /apis/networking.k8s.io/v1 - /networkpolicies, 
+
+  /apis/certificates.k8s.io/v1 - /certificateSigningRequest
+
+  each resources has actions related:
+  list, get, create, delete, update, watch
+
+  
+
+
+
+
+
+
+
+    

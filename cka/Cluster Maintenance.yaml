@@ -66,5 +66,59 @@ Kubernetes verions
           systemctl restart kubelet
           kubectl uncordon node01
       5. upgrade the remaining the other nodes with same steps
-         
+      
+
+      cat \etc\*release*
+      kubectl get nodes
+      kubectl drain nodename
+      kubectl version --short
+      kubeadm upgrade plan
+      apt-get upgrade -y kubeadm=1.xx.0-00  / apt install kubeadm=1.xx.0-00
+      kubeadm upgrade apply v1.xx.0
+      apt-get upgrade -y kubelet=1.xx.0-00 / apt install kubelet=1.xx.0-00
+      kubectl uncordon nodename
+
+
+Backup and Restore
+    Backup candidates
+    -Resource configuration 
+        good practice is to store in GitHub (definition yaml)
+        for imperative objects 
+          kubectl get all --all-namespaces -o yaml > all-deployments.yaml
+          or use VALERO
+    -ETCD cluster
+        etcd is on the master
+        etcd.service has a config element --data-dir=<path>
+        backup this directory
+        or etcdctl \
+              snapshot save snapshot.db \
+              --endpoints=https://127.0.0.0:2379 \
+              --cacert=/etc/etcd/ca.crt \
+              --cert=/etc/etcd/etcd-server.crt \
+              --key=/etc/etcd/etcd-server.key
+
+           etcdctl \
+              snapshot status snapshot.db
+          to restore
+           service kube-apiserver stop
+           etcdctl \
+              snapshot restore snapshot.db \
+              --data-dir /var/lib/etcd-from-backup
+            the configure the etcd.service to use the new directory --data-dir=/var/lib/etcd-from-backup
+              systemctl daemon-reload
+              service etcd restart
+              service kube-apiserver start
+
+              note: to use etcdctl first do export ETCDCTL_API=3
+
+    -Persistent volumes
+          the usual backup drive/directory
+
+          Practice restore from backup of etcd
+          docker ps -a | grep etcd
+          docker logs <container id>
+          
+
+
+
 
