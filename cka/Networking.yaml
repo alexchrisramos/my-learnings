@@ -1,0 +1,122 @@
+Networking basics in Linux
+Switch and Router in Linux
+  ip link  - to see the interface of the host
+  ip addr add 192.168.1.10/24 dev eth0
+  route  - shows that route table
+  ip route add default via 192.168.2.1 (any network or address, use the default gateway)
+
+  for box with 2 eth - packets cannot be forwarded between eth
+  this is controlled via /proc/sys/net/ipv4/ip_forward
+
+DNS in Linux
+  /etc/hosts
+  cat >> /etc/hosts
+
+  specify the DNS sever on
+  /etc/resolv.conf
+  namesever <IP address of DNS Server>
+
+  the order at which the host look up the nameresolution can be cofigured
+  /etc/nsswitch.conf
+
+  /etc/resolv.conf
+  search mycompany.com   #if you go to web it will append mycompany.com making the address web.mycompany.com
+
+  Record types:
+  A record - map IP to host name
+  AAAA record - ipv6
+  CNAME - name to name mapping
+
+  Tools:
+  ping www.google.com
+  nslookup www.google.com #cannot see nameserver defined in /etc/hosts
+  dig www.google.com #more detailed info on nameresolution
+
+  CoreDNS
+  install via 
+  wget https://github.com/coredns
+  listen at port 53
+  CoreDNS IP-hostname mapping can be configured in /etc/hosts then confgure CoreDNS to use this file
+  via the Corefile
+
+
+
+Network Namespaces
+  Used by containers 
+  container will have its own network interface, routing and arp table
+  
+  to create network namespaces in Linux
+  ip netns add red
+  
+  ip netns  (will lists the net namespaces)
+  ip link #lists the network interface on host
+  ip netns exec red ip link #lists the network interface on container
+  ip -n red link #same as above
+
+  arp #will list the arp table on the host
+  ip netns exec red arp #list arp table on container
+  route
+  ip netns exec red route
+
+  link container together
+  ip link add veth-red type veth peer name veth-blue #create virtual link for the 2 network namespace
+  ip link set veth-red netns red #associate the netns to the container
+  ip link set veth-blue netns blue #associate the netns to the container
+
+  ip -n red addr add 192.168.15.1 dev veth-red #assign an IP to the network namespace interface
+  ip -n blue addr add 192.168.15.2 dev veth-blue #assign an IP to the network namespace interface
+
+  ip -n red link set veth-red up #bring up link 
+  ip -n red link set veth-red up #bring up link
+
+  if more containers/namespace - you need a virtual Switch/virtual network
+  Linux Bridge or OpenvSwitch
+  ip link add v-net-0 type bridge
+
+  ip link
+  v-net-0 is now an interface of the host
+  assigning an IP to v-net-0 from the host cidr, means this will not be reachable by the host
+
+  but namespace network is only limited to the host
+  it cannot reach or reachable by outside of the host
+  the host now becomes a gateway
+  to reach outside from namespace, ip tables needs a NAT
+  iptables -t nat -A POSTROUTING -s <CIDR of namespace> -j MASQUERADE
+  #this will mask the from IP of namespace to the host IP
+  #nat is used as well for outsiede world to reach the namespaces but with port
+
+
+Docker networking
+  Docker run --network none nginx #not attached to any network
+  Docker run --network host nginx #http://localhostip:80 reachable from host, only 1 can use the port
+  Docker run nginx #bridge network 
+
+  when docker is installed it creates a virtual network named bridge
+  docker creates a port mapping to map external access to the container
+
+CNI - Container Networking Interface
+  All network namespace solutions are combined to a single solution named CNI
+  #plugins are bridge, VLAN, IPVLAN, MACVLAN,
+  bridge add <containerid> /var/run/netns/container
+  #adds the container to the bridge network
+
+
+Networking Cluster Nodes
+  Nodes ports that needs to be open
+  kube-apiserver 6443
+  kubelet 10250
+  kube-scheduler 10251
+  kube-controller-manager 10252
+  services 30000-32767
+  etcd 2379
+  etcd (multi etcd) 2380 
+  
+  netstat -anp | grep etcd
+  #list the network connection statistics
+
+Pod networking
+  
+
+
+
+

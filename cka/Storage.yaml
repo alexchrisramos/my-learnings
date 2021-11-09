@@ -1,0 +1,175 @@
+Storage
+  How storage works in containers/docker
+  Storage Drivers
+  Volume Drivers
+
+  Docker storage File system
+  docker builds an image with Layered architecture
+  the image layer is read only 
+  the container layer is read and write but is only temporary and gets destroyed as the container is destroyed
+
+  To persis the data
+  docker volume create data_volume
+    this command will create /var/lib/docker/volumes/data_volume
+  docker run -v data_volume:/var/lib/mysql mysql
+    this will mount the data_volume to the container
+    any data written on /var/lib/mysql (the default directory of mysql)
+    will actually be written on the data_volume /var/lib/docker/volumes/data_volume
+  this is called volume mounting
+
+  docker run -v /data/mysql:/var/lib/mysql mysql
+  bind mounting
+    binds a volume from any location
+  
+  new way of mounting
+  docker run --mount type=bind, source=/data/mysql, target=/var/lib/mysql mysql
+
+  All these storage/file/layer related actions are controlled by
+  storage Drivers
+  common storage drivers are:
+    AUFS, ZFS, BTRFS, Device Mapper, Overlay, Overlay2
+
+Volume driver plugins
+  Local, Azure File Storage, Convoy, DigitalOcean Block storage, FLocker, gce-docker, Gluster-FS, NetApp, RexRay, Portworx, VMWare VSphere Storage
+
+  docker run -it --name mysql --volume-driver rexray/ebs --mount src=ebs-vol, target=/var/lib/mysql mysql
+
+
+Container storage interface
+  CRI was created to provide an interface to different containerization (docker, rkt, cri-o)
+  CNI (Container network interface) - is also an interface to handle different network solution
+  CSI (Container Storage Solution) - also a kubernetes interface
+
+  CSI is having a specific rules for storage provider to create the volume drivers on a specific RPC
+
+
+Kubernetes Volumes
+  Volumes allows the storing of data on the directory of the host
+  therefore allowing the container data persistent
+
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: myapp
+    labels:
+      name: myapp
+  spec:
+    containers:
+    - name: myapp
+      image: <Image>
+      volumeMounts:
+        - name:  data_volume
+        mountPath:  /opt/val  #directory inside the container
+    volumes:
+      - name:  data_volume
+      hostPath: 
+        path: /data/          #directory from local node (not recommended for multi node)
+        type: directory
+      awsElasticBlockStore:     #use this if AWS EBS
+        volumeID: <volume-id>
+        fsType: ext4
+      
+
+Persistent Volume and Persistent Volume Claims
+  Previously volumes are defined in the pod definition
+  For large environment, this is a hassle
+
+  Persistent volume is a cluster wide storage
+  Users/Pods can now use this cluster wide storage using persistent volume claims
+
+  Persistent volumes
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mypv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /tmp/data
+    server: 172.17.0.2
+
+ kubectl create -f pv-definition.yaml
+
+ kubectl get persistentvolume 
+
+
+ Persistent Volume Claims
+  PV is created by admin
+  PVC is created by users
+
+  kubernetes will try to bind the PVC to the PV that matches the storage claim and other properties
+  labels can also be made to choose a specific PV
+  1 PV = 1 PVC
+  If no PV is available, the PVC will be pending state
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  resources:
+    requests:
+      storage: 500Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+
+
+  kubectl delete persistentvolumeclaim mypvc
+  will delete the claim
+  what will happen on the PV depends on the 
+  persistentVolumeReclaimPolicy: Retain
+  Retain is the default, it will retain the PV ()until manually deleted and other claims cannot acquire it
+  Delete will delete the PV, thus freeing up space on the storage
+  Recycle will recycle the PV allowing other claims, data will be deleted
+
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: myapp
+    labels:
+      name: myapp
+  spec:
+    containers:
+    - name: myapp
+      image: <Image>
+      volumeMounts:
+      - mountPath: "/var/www/html"
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: mypvc  #specify the persistent volume claim you created earlier
+
+
+Storage Classes
+ Before creating PV, you have to provision the disk/volume first
+ also called as Static Provisioning
+
+ Storage classes is dynamic Provisioning
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: google-storage
+provisioner: kubernetes.io/gce-pd
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  storageClassName: google-storage
+  resources:
+    requests:
+      storage: 500Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+
+PV is created automatically by Storage Class

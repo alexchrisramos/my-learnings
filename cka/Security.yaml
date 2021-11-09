@@ -513,7 +513,160 @@ Check your access
     kubectl auth can-i delete pods --as dev-user
 
 
+CLuster Roles
+  authorizing users to cluster scoped resources
+  roles are created on namespaces
+  if namespace is not specified, it will be default
+  nodes cannot be categerized in namespaces
+  namespaced vs cluster scoped
 
+  cluster scoped objects are
+  nodes, PV, clusterroles, clusterrolebindings, certificatesigningrequest 
+
+  authorizing users to create, delete node or PV
+  kind = ClusterRole and ClusterRoleBindings
+  with clusterRole, you can also set a user permission across all namespaces
+
+  kubectl get clusterrole
+  kubectl get clusterrolebinding
+
+Service accounts
+  Apps like jenkins and Prometheus uses Service accounts
+
+  kubectl create serviceaccount dashboard-sa
+  kubectl get serviceaccount dashboard-sa
+  kubectl describe serviceaccount dashboard-sa
+
+  when creating a service account it creates a token
+  the token is what the app should use to authenticate
+  the token is stored as a secret object
+
+  kubectl describe secret dashboard-sa-token-kbbdm
+
+  if the app is running as a pod on the cluster
+  we just need to mount the secret as a volume to the pod
+  just like the default serviceaccount (for ever namespace there is a default service account)
+  this default service account is always mounted to pods
+
+  Define sa on pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: myapp
+    image: <Image>
+  serviceAccountName: dashboard-sa
+
+
+Image security
+  image pulled from registry
+  image nginx is actualy docker.io/library/nginx
+  where library is the default useraccount if not specified
+  where docker.io is the default registry if not specified
+
+  private repository
+  image = private-registry.io/apps/internal-app
+  for credentials
+    create a secret with credentials
+    kubectl create secret docker-registry regcred
+      --docker-server=private-registry.io
+      --docker-username=registry-user
+      --docker-password=registry-password
+      --docker-email=registry-email@org.com
+    then specify on the pod definition the regcred 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: myapp
+    image: <Image>
+  imagePullSecrets:
+    - name:  regcred
+
+
+Security contexts
+  when running a docker container
+  an option to define the user is available
+  docker run --user=1001 ubuntu sleep 1000
+  docker run --cap-add MAC_ADMIN ubuntu
+
+  this can be configured in kubernetes
+  pod level or container level
+  container level overwrites the pod level
+
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: myapp
+    labels:
+      name: myapp
+  spec:
+    securityContext:
+      runAsUser: <username>    (pod level)
+    containers:
+    - name: myapp
+      securityContext:
+        runAsUser: <username>  (container level)
+        capabilities:
+          add: ["MAC_ADMIN"]
+      image: <Image>
+
+
+Network Policies
+  securing ingress and egress on each pod
+  Ex. deny network traffic from frontend to database
+  and only allow a traffic from specific rule
+
+  Networking policies are implemented by network solutions on kubernetes cluster
+  not all supports network policies
+  Flannel does not support
+  only work with kube-router, Weave-net, Romana, Calico
+
+
+  using labels and selectors
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-policy
+spec:
+  podSelector:
+    matchLabels:
+      role: db    (this associates the policy to the pod)
+  policyTypes:
+  - Ingress       (the return to the api pod does not need another rule)
+  - Egress        (if communication will be initiated from the db pod)
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: api-pod  (defines the ingress from pod)
+      namespaceSelector:
+        matchLabels:
+          name: prod       (if defining with specific namespace is required)
+    - ipBlock:
+        cidr: 192.168.0.10/32      (defining using IP)
+    ports:
+    - protocol: TCP
+      port: 3306           (defines which port to open on DB pod)
+  Egress:
+  - to:
+    - ipBLock:
+        cidr: 
+    ports:
+    - protocol:
+      port: 
+
+  kubectl create -f network-policy-definition.yaml
 
 
 
