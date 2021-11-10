@@ -1,0 +1,81 @@
+Design a Kubernetes cluster
+  Purpose?
+  Cloud or OnPrem?
+  Workloads?
+
+  kubeadm for onprem
+  GKE for GCP
+  Kops for AWS
+  AKS for Azure
+
+  Turnkey solutions (you configure and manage your own cluster VM's)
+  OpenShift, CloudFoundry, VMware Cloud PKS, Vagrant
+
+  Hosted Solutions / Managed Solution
+  AKS, GKE, EKS, OpenShift Online
+
+HA - High Availability
+  Multiple Master/ControlPlane
+  
+  With multi master node
+  https://master1:6443 / https://master2:6443
+  these 2 nodes should have a load balancer in front
+  with multiple scheduler/controller-manager
+  there should be a leader election process
+    kube-controller-manager --leader-elect true
+        --leader-elect-lease-duration 15s #lock duration of leader
+        --leader-elect-renew-deadline 10s #time to renew the lease
+        --leader-elect-retry-period 2s #tries to become the leader
+    same with scheduler
+  
+  Stacked Topology
+  ETCD and controlplane components are on same nodes
+  External ETCD Topology
+  ETCD is separated from controlplane components
+
+  cat /etc/systemd/system/kube-apiserver.service
+  shows the configuration of kube-apiserver service
+  like, address of etcd
+
+
+  ETCD in HA
+    ETCD is key-value store
+    Read from etcd has no issue, can read from any etcd node
+    ETCD also elects a leader
+    all writes are performed on one node, the leader
+    then sends a copy to the other nodes
+
+    How ETCD elects a leader
+    RAFT election process
+
+    How ETCD considers a write to be successful
+    if some nodes are down, as long as the Majority/quorum is good, write is successful
+    Quorum = N/2+1
+
+    Odd number of etcd instances is preffered
+    and minimum recommended number of instances is 3 as it gives 1 on fault tolerance
+    3/2 + 1 = 2 (rounded) > which means 1 is the fault tolerance 2 is the quorum
+
+
+  etcd.service
+    shows the configuration of the etcd, like peer
+
+  
+
+Installing with kubeadm
+
+Master                Node1                   Node2
+kube-apiserver        kubelet                 kubelet
+etcd                  containerruntime        containerruntime
+node controller
+replicate controller
+
+
+Steps
+  1. should have multiple VM
+  2. install docker on all nodes
+  3. install kubeadm tool
+  4. intialize master server
+  5. configure pod network
+  6. joine worker nodes
+  

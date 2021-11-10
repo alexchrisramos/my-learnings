@@ -115,7 +115,141 @@ Networking Cluster Nodes
   #list the network connection statistics
 
 Pod networking
+  Pod networking are handled by a networking solution
+  goverened by CNI - Container network orchestration
+
+  ip link 
+  ip -a 
   
+  /opt/cni/bin - location of CNI plugins available
+  /etc/cni/net.d/*.conf - location of config file specifying which plugin is being Used
+
+  the CNI plugin - Ex. Weavenet installs an agent on each node
+  that creates a bridge networking between pods
+  creating a virtual network 
+  
+  ps -aux | grep weave #shows the running processes of the CNI plugin
+
+Service Networking
+  the pod IP is accessible only on Node
+  while Service IP is accessible to the cluster
+  this type of service is known as
+  ClusterIP
+
+  if service needs to be accessible from outside of cluster (web app)
+  the type of service needed is
+  NodePort
+  Nodeport also exposes the port number
+
+  While pods have IP assigned by CNI invoked by kubelet
+  Service is invoked by kube-proxy and is cluster wide object, not tied to a specific node, not a service or namespace
+  when service is created, it gets an IP address from a pre-defined range
+  the kube-proxy gets the that IP address and creates a Forwarding rule on each node
+  the forwarding rule will forward the traffic from the service IP:port to the pod IP:port
+  by default it uses iptables, but mode can be changed
+  kube-proxy --proxy-mode [iptables | userspace | ipvs]
+
+  the clusterIP range is defined in the kube-apiserver
+  ps aux | grep kube-api-server
+  and can be specified by
+  kube-api-server --service-cluster-ip-range ipNet (default 10.0.0.0/24)
+  the pod CIDR should not overlap the Service CIDR
+
+  you can see the rules of iptables created by kubeproxy on
+  iptables -L -t nat | grep db-service
+
+  the kube-proxy changes are also logged on
+  cat /var/log/kube-proxy.log
+
+  ip a | grep eth0  #to determine the IP/range of the node
+  ip a | grep weave #to deterine the IP/range of the pods  
+    kubectl logs <name of cni plugin pod> #logs of CNI provider also gives the alloc range
+  ps aux | grep --service-cluster #to determine the IP range of the cluster/service
+    cat /etc/kubernetes/manifests/kube-apiserver.yaml #if apiserver is a pod, the definition of the pod under commands also shows the cluster ip range
+  kubectl logs <kubeproxy-pod> #logs shows which proxy mode used by kube-proxy
+
+
+DNS in kubernetes
+  only within the kubernetes objects, not of the nodes
+  the DNS in kubernetes maps the IP of the service to the FQDN
+  servicename.namespace.objecttype.root
+  webapp-service.default.svc.cluster.local
+  db-service.prod.svc.cluster.local
+  pods can also be recorded in the kube DNS if defined explicitly, the name is derived from IP replacing dots with dashes
+  10-15-0-1.prod.pod.cluster.local
+
+CoreDNS in Kubernetes
+  cat /etc/resolv.conf is where the nameserver specified
+
+  CoreDNS are deployed as a POD from ReplicaSet (deployment)
+  the CoreDNS configuration file
+  cat /etc/coredns/Corefile
+  this configuration file is created as a ConfigMap
+  kubectl get cm
+  kubectl describe cm coredns
+
+  as the CoreDNS is deployed, it also creates a kubernetes service
+  called kube-dns by default
+  the kube-dns IP is then added by kubelet to the /etc/resolv.conf of the pods, to point them to this nameserver
+
+Ingress in Kubernetes
+  Services VS Ingress
+  Ingress is like a layer 7 load balancer
+  it load balance and also redirect to specific service depending on the URL path
+  like a cloud native load balancer
+
+  How is Ingress deployed?
+  Ingress is deployed as an Ingress Controller
+  the ingress solutions available are
+  GCE, Nginx, Contour, Istio, haproxy, traefic
+  this are deployed as another deployment in kubernetes
+  nginx-ingress-deployment.yaml #to deploy the actual pod ingress controller
+  nginx-ingress-resource.yaml #contains the actual rules
+    kubectl get ingress
+  nginx-ingress-service.yaml #NodePort service to map the service to the ingress
+  nginx-ingress-configmap.yaml #for the configuration file
+  nginx-ingress-serviceAccount.yaml #for the authentication
+
+  kind: apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: myingress
+    labels:
+      name: myingress
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /        #this was needed when I created another ingress on another namespace
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  spec:
+    rules:
+    - host: wear.mywebsite.com  #this is for filtering with subdomain wear
+      http:
+        paths:
+        - path: "/wear"         #this is for fitering with url path
+          backend:
+            service:
+              name: wear-service
+              port: 
+                number: 80
+        - path: "/watch"
+          backend:
+            service:
+              name: watch-service
+              port: 
+                number: 8080
+
+
+  practice:
+  create namespace
+  create configmap
+  create serviceaccount
+  deploy ingress controller (pod)
+  create a NodePort service with selector name as the label of deploy controller
+  create a ingress resource - the actual filter (ingress object)
+  and make sure that annotations for rewrite and ssl is added on ingress resource
+
+
+
+
 
 
 
