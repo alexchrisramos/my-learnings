@@ -1,0 +1,61 @@
+Application failure
+  Check accessibility
+  check connectivity using node port
+  
+  Check Service
+  does the service has endpoints 
+  compare selectors for service > pod
+  
+  Check pod
+  confirm pod is running
+  check pod restart, is it getting restarted?
+  check events of pod by describing
+  check the logs of the pod 
+  kubectl logs web -f --previous  #previous specify to check previous pods instance log
+
+  Check the DB or dependent applications
+  events, logs
+
+Controlplane failure
+  Check nodes
+  Check pods
+  
+  if controlplane components are running as pods
+  Check pods of kube-system are running
+  if controlplane components are running as services
+  Check if services are running
+    service kube-apiserver status
+    service kube-controller-manager status
+    service kube-scheduller status
+    service kubelet status #worker nodes
+    service kube-proxy status  #worker nodes
+
+  Check logs of controlplane components
+  if running as pods
+    kubectl logs
+  if as service, use the logging utility of the host
+    sudo journalctl -u kube-apiserver
+
+
+Worker node failure
+  Check nodes
+  Describe node with issue
+    kubectl describe node nodename
+    unknown status is a possible lost of node/crashed
+  Proceed with checking the node itself
+    CPU, memory, disk
+    check kubelet status
+      service kubelet status
+    check kubelet certificates
+      openssl x509 -in /var/lib/kubelet/worker-1.crt -text
+
+  /etc/kubernetes/kubelet.conf  #controlplane server address,  
+  /var/lib/kubelet/config.yaml  #service configuration
+
+Network troubleshooting
+  
+
+
+
+  
+

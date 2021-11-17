@@ -1,0 +1,35 @@
+
+Core services
+ps aux | grep kubelet
+#identify config parameters of service
+
+
+Network
+CNI config file
+/etc/cni/net.d/*.config
+CNI plugin dir
+/opt/cni/bin/
+
+Node network IP range
+get the node IP and search it in the ip a | grep <ip address> or ip link | grep <ip address>
+Pod network IP range 
+The CNI plugin used (ex. weave) ip in IP link or the logs of the weave pod
+Service network IP range
+on the - --service-cluster-ip-range= command of the kube-apiserver manifest
+
+netstat -nplt | grep scheduler
+#identify port/IP of kube-scheduler
+
+netstat -anp | grep etcd
+#identify active connections of etcd by port
+
+CoreDNS runs as a pod
+and the Service cluster IP is the DNS IP
+
+
+
+ServiceAccount
+k create serviceaccount sa-name
+#this automatically creates the token
+#this token stored as secret is what the app will use
+
