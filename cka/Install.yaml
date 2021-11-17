@@ -77,5 +77,35 @@ Steps
   3. install kubeadm tool
   4. intialize master server
   5. configure pod network
-  6. joine worker nodes
+  6. joined worker nodes
   
+
+Kubeadm
+Follow guide on 
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
+
+
+#after prerequisites, install kubeadm, kubectl and kubelet
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet=1.21.0-00 kubeadm=1.21.0-00 kubectl=1.21.0-00
+sudo apt-mark hold kubelet kubeadm kubectl
+
+#initialize the controlplane
+kubeadm init --apiserver-cert-extra-sans=controlplane --apiserver-advertise-address 10.2.223.3 --pod-network-cidr=10.244.0.0/16
+
+#join the nodes using the token in the output
+#or generate
+kubeadm token create --print-join-command
+
+
+#install network plugin
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+

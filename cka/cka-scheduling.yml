@@ -229,6 +229,7 @@ Static Pods
         where kubeconfig.yaml has
         staticPodPath: /etc/kubernetes/manifests
         (kubeadm uses this approach)
+  /var/lib/kubelet/config.yaml - this is where staticPodPath is configured
   
   once static pods are created, you can view them using docker ps command since there is no api-server for the kubectl
   use case: On all master node, make etcd, apiserver, controller as static pods

@@ -47,6 +47,12 @@ Kubernetes Volumes
   Volumes allows the storing of data on the directory of the host
   therefore allowing the container data persistent
 
+  volumes - the actual directory where the data will be written permanently
+  volumeMount - the representation of the volume inside the container
+            mounthPath - the directory that you want the continer data to be writtent to volume
+            name - the name of the volume defined above
+
+
   apiVersion: v1
   kind: Pod
   metadata:
@@ -58,12 +64,12 @@ Kubernetes Volumes
     - name: myapp
       image: <Image>
       volumeMounts:
-        - name:  data_volume
-        mountPath:  /opt/val  #directory inside the container
+        - name:  data_volume   #the name of volume defined below under volumes
+        mountPath:  /opt/val  #directory inside the container where the volume would be presented at
     volumes:
       - name:  data_volume
       hostPath: 
-        path: /data/          #directory from local node (not recommended for multi node)
+        path: /data/          #directory from local node, the actual directory that will be used in mountPath above
         type: directory
       awsElasticBlockStore:     #use this if AWS EBS
         volumeID: <volume-id>
@@ -173,3 +179,8 @@ spec:
     - ReadWriteOnce
 
 PV is created automatically by Storage Class
+
+
+PersistentVolume - defines the actual storage definition (what type and path)
+PersistentVolumeClaim - defines the binding of PV to the application (how big the storage, mode)
+

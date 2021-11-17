@@ -100,6 +100,19 @@ CNI - Container Networking Interface
   bridge add <containerid> /var/run/netns/container
   #adds the container to the bridge network
 
+Weave
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/
+
+flannel
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
+
+Calico
+curl https://docs.projectcalico.org/manifests/calico.yaml -O
+kubectl apply -f calico.yaml
+
+
+
 
 Networking Cluster Nodes
   Nodes ports that needs to be open
@@ -246,6 +259,11 @@ Ingress in Kubernetes
   create a NodePort service with selector name as the label of deploy controller
   create a ingress resource - the actual filter (ingress object)
   and make sure that annotations for rewrite and ssl is added on ingress resource
+
+
+  commands to remember:
+  netstat -nplt | grep 
+  netstat -anp | grep 
 
 
 
