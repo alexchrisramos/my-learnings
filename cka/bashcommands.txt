@@ -33,3 +33,13 @@ k create serviceaccount sa-name
 #this automatically creates the token
 #this token stored as secret is what the app will use
 
+
+
+Cluster
+HA - redundant controlplane nodes
+
+apiserver - active-active
+controllermanager - active-passive - leader elect options
+scheduler - active-passive - leader elect options
+etcd - stacked controlplane topology or external etcd topology
+    leader elect with RAFT - only leader performs the write
