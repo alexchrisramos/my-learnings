@@ -3,6 +3,9 @@ Core services
 ps aux | grep kubelet
 #identify config parameters of service
 
+kubelet
+cat /var/lib/kubelet/config.yaml
+
 
 Network
 CNI config file
@@ -27,19 +30,3 @@ CoreDNS runs as a pod
 and the Service cluster IP is the DNS IP
 
 
-
-ServiceAccount
-k create serviceaccount sa-name
-#this automatically creates the token
-#this token stored as secret is what the app will use
-
-
-
-Cluster
-HA - redundant controlplane nodes
-
-apiserver - active-active
-controllermanager - active-passive - leader elect options
-scheduler - active-passive - leader elect options
-etcd - stacked controlplane topology or external etcd topology
-    leader elect with RAFT - only leader performs the write
