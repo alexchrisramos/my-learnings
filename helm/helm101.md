@@ -198,5 +198,9 @@ metadata:
     {{- include "minio.labels" . | nindent 4 }}
 
 
+in the notes, the message is printed, where usually the URL and access key's are provided
+to generate this
+
+
 
 
